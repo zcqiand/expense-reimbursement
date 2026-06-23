@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * 财务报销系统 Spring Boot 入口。
  *
- * 《Harness 工程》第 11 章「项目规划与架构设计」的实物：
+ * 《Harness 工程：围绕 Claude Code 构建可靠系统》第 11 章「项目规划与架构设计」的实物：
  * - 单体应用（不是微服务）：见第 11.5 节决策
  * - 入口类放包根 com.zcqiand.expense，让 @ComponentScan 默认就能扫到
  *   controller/service/repository/entity 四个子包

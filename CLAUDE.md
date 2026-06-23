@@ -1,6 +1,6 @@
 # expense-reimbursement — Claude Code 项目级上下文
 
-> 本文件是《Harness 工程》第 11 章「项目规划与架构设计」的实物示例。
+> 本文件是《Harness 工程：围绕 Claude Code 构建可靠系统》第 11 章「项目规划与架构设计」的实物示例。
 
 ## 项目定位
 

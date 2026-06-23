@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "《Harness 工程》卷三案例：财务报销系统前端",
+  "description": "《Harness 工程：围绕 Claude Code 构建可靠系统》卷三案例：财务报销系统前端",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
