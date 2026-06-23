@@ -1,0 +1,49 @@
+# 财务报销系统三服务编排。
+#
+# 阶段 1 骨架版：暂只起 db + backend。前端在阶段 5 才会加入。
+#
+# 用法：
+#   docker compose up -d           # 后台启动
+#   docker compose logs -f backend # 看后端日志
+#   docker compose down            # 停（保留 volume）
+#   docker compose down -v         # 停 + 删 postgres 数据卷（注意 CLAUDE.md
+#                                  # 已警告这是"危险操作"）
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: expense-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-expense}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-expense}
+      POSTGRES_DB: ${POSTGRES_DB:-expense}
+    ports:
+      # 暴露给宿主用于本地开发连接；生产部署可关掉
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-expense} -d ${POSTGRES_DB:-expense}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: expense-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-expense}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-expense}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-expense}
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres-data:

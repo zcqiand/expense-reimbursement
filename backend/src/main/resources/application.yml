@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: expense-reimbursement-backend
+
+  datasource:
+    # 由环境变量注入；docker-compose 里指向 db 服务，本地开发可写 localhost
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/expense}
+    username: ${SPRING_DATASOURCE_USERNAME:expense}
+    password: ${SPRING_DATASOURCE_PASSWORD:expense}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # 禁止 ddl-auto: update——CLAUDE.md 明令；schema 真源走 Flyway
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    # validate-on-migrate 默认 true——确保已应用迁移文件未被偷改
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 只暴露 health；info / metrics 第 14 章再开
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    # /swagger-ui.html → /swagger-ui/index.html
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    root: INFO
+    com.zcqiand.expense: DEBUG
+    org.hibernate.SQL: WARN
