@@ -1,0 +1,31 @@
+:root {
+  font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #222;
+  background: #f5f6f8;
+}
+
+body {
+  margin: 0;
+  padding: 2rem;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  background: white;
+}
+
+th, td {
+  border: 1px solid #e0e0e0;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background: #fcfcfc;
+}
