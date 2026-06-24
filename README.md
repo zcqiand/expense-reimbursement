@@ -12,8 +12,8 @@
 | 第 12 章 数据库与 API 开发 | `backend/src/main/java/com/zcqiand/expense/` + `db/migration/` |
 | 第 13 章 前端开发与 UI 实现 | `frontend/src/pages/` |
 | 第 14 章 调试技巧 | 后端日志策略 + 前端 DevTools 集成 |
-| 第 15 章 自动化测试与 CI/CD | `backend/src/test/` + `frontend/tests/` + `.github/workflows/ci.yml` |
-| 第 16 章 精准控制大模型 | 后端 Prompt Engineering 模块（审批意见生成） |
+| 第 15 章 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml`（backend `mvn verify` + frontend `npm run build` 双 job） |
+| 第 16 章 精准控制大模型 | `backend/src/main/java/com/zcqiand/expense/service/ApprovalOpinionService.java`（JSON Schema 结构化输出 + 验证-修复循环）+ `controller/ApprovalOpinionController.java` |
 
 ## 技术栈
 

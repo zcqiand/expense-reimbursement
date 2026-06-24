@@ -35,9 +35,18 @@ expense-reimbursement/
 │   ├── src/main/java/com/zcqiand/expense/
 │   │   ├── ExpenseApplication.java
 │   │   ├── controller/             ← REST API（第 12 章）
-│   │   ├── service/                ← 审批流（第 12 章）
+│   │   │   ├── ExpenseReportController.java
+│   │   │   ├── ApprovalOpinionController.java  ← 第 16 章审批意见端点
+│   │   │   └── GlobalExceptionHandler.java
+│   │   ├── service/                ← 审批流（第 12 章）+ 意见生成（第 16 章）
+│   │   │   ├── ExpenseService.java
+│   │   │   ├── ApprovalOpinionService.java     ← 第 16 章结构化输出 + 验证-修复循环
+│   │   │   ├── OpinionModelClient.java         ← 大模型端口（测试可打桩）
+│   │   │   └── AnthropicOpinionClient.java     ← claude-opus-4-7 实现
 │   │   ├── repository/             ← JPA Repositories
 │   │   ├── entity/                 ← JPA 实体（第 12 章 Schema）
+│   │   ├── dto/                    ← ApprovalOpinion / ApprovalRequest / ApiResponse
+│   │   ├── exception/              ← BusinessException 族 + OpinionGenerationException
 │   │   └── config/
 │   ├── src/main/resources/
 │   │   ├── application.yml
@@ -87,5 +96,5 @@ expense-reimbursement/
 | 第 12 章 数据库与 API | `backend/src/main/java/...` + `db/migration/` |
 | 第 13 章 前端与 UI | `frontend/src/pages/` |
 | 第 14 章 调试技巧 | Spring Boot Actuator + React DevTools 集成 |
-| 第 15 章 CI/CD | `.github/workflows/ci.yml` |
-| 第 16 章 精准控制大模型 | 后端审批意见生成模块 |
+| 第 15 章 CI/CD | `.github/workflows/ci.yml`（backend + frontend 双 job） |
+| 第 16 章 精准控制大模型 | `backend/src/main/java/com/zcqiand/expense/service/ApprovalOpinionService.java` + `controller/ApprovalOpinionController.java` |

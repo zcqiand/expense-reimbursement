@@ -47,6 +47,16 @@ public class ApprovalRecord {
     @Column(length = 500)
     private String reason;
 
+    /**
+     * 大模型生成的审批意见（结构化 JSON 的序列化结果）。
+     *
+     * 由 ApprovalOpinionService 写入（第 16 章「精准控制大模型」的实物）。
+     * columnDefinition = text——PostgreSQL TEXT 与 H2 TEXT 兼容，长文本不被
+     * VARCHAR(500) 卡死；nullable，老数据与未生成意见的记录为 NULL。
+     */
+    @Column(name = "opinion", columnDefinition = "text")
+    private String opinion;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -97,6 +107,14 @@ public class ApprovalRecord {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public String getOpinion() {
+        return opinion;
+    }
+
+    public void setOpinion(String opinion) {
+        this.opinion = opinion;
     }
 
     public OffsetDateTime getCreatedAt() {
