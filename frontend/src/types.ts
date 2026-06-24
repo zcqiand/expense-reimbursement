@@ -25,3 +25,39 @@ export interface ApiResponse<T> {
   data: T | null
   error: { code: string; message: string } | null
 }
+
+/**
+ * 报表聚合类型——与后端 dto 报表 record 一致（第 38/39 章）。
+ *
+ * 后端用 BigDecimal 序列化为 JSON number；前端按 number 处理。
+ * MonthlySummary.month 是后端 YearMonth，序列化为 "YYYY-MM" 字符串。
+ * ReportSummary.monthlySummary 仅当请求带 month 参数时存在（后端 @JsonInclude NON_NULL）。
+ */
+
+/** 按状态分组——与后端 dto.StatusBreakdown record 一致 */
+export interface StatusBreakdown {
+  status: ExpenseStatus | string
+  count: number
+  totalAmount: number
+}
+
+/** 指定月份汇总——与后端 dto.MonthlySummary record 一致 */
+export interface MonthlySummary {
+  month: string
+  count: number
+  totalAmount: number
+}
+
+/** 按申请人分组——与后端 dto.ApplicantBreakdown record 一致 */
+export interface ApplicantBreakdown {
+  applicantId: number
+  count: number
+  totalAmount: number
+}
+
+/** 报表汇总响应——与后端 dto.ReportSummary record 一致 */
+export interface ReportSummary {
+  statusBreakdown: StatusBreakdown[]
+  monthlySummary?: MonthlySummary | null
+  topApplicants: ApplicantBreakdown[]
+}
