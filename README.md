@@ -15,6 +15,18 @@
 | 第 15 章 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml`（backend `mvn verify` + frontend `npm run build` 双 job） |
 | 第 16 章 精准控制大模型 | `backend/src/main/java/com/zcqiand/expense/service/ApprovalOpinionService.java`（JSON Schema 结构化输出 + 验证-修复循环）+ `controller/ApprovalOpinionController.java` |
 
+## 作为 xr-know-002 卷四案例（财务报销系统）
+
+本仓库同时作为《Harness 工程》**卷四**「财务报销系统」的实物载体——卷四在卷三
+报销骨架之上扩展出 OCR 票据识别、报表聚合与审计能力。卷四涉及的章节映射如下，
+其余卷四章（角色建模 / ORM / 审批引擎 / 测试 CI）仍对应上文卷三的原模块：
+
+| 章节 | 对应代码 |
+|------|---------|
+| 第 37 章 OCR 票据识别与通知 | `backend/.../service/OcrService.java` + `controller/OcrReceiptController.java` + `service/OcrClient.java`（端口） / `TesseractOcrClient`（本地 Tesseract） / `MockOcrClient`（无 Key 时 mock 回落） |
+| 第 38 章 报表、权限与审计 | `backend/.../service/ReportService.java` + `controller/ReportController.java` + `entity/AuditLog.java` + `db/migration/V5__add_audit_log.sql` |
+| 第 39 章 前端工作台（报表） | `frontend/src/pages/Reports.tsx` + `frontend/src/api/report.ts` |
+
 ## 技术栈
 
 - 后端：Spring Boot 3.3.x + Java 21 LTS + Flyway
