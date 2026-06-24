@@ -4,6 +4,9 @@ import com.zcqiand.expense.dto.ApiResponse;
 import com.zcqiand.expense.entity.Receipt;
 import com.zcqiand.expense.service.OcrService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -43,7 +46,23 @@ public class OcrReceiptController {
     }
 
     @PostMapping("/{id}/receipts")
-    @Operation(summary = "上传票据图片并做 OCR 识别，结果落库为 Receipt")
+    @Operation(
+            summary = "上传票据图片并做 OCR 识别，结果落库为 Receipt",
+            description = "把上传图片写临时盘后调 OcrService.recognizeAndSave 做识别并落库，"
+                    + "返回 ApiResponse<Receipt>。OCR 引擎失败时落一条 FAILED Receipt（审计可追溯），"
+                    + "不抛 500；缺 file / 空文件抛 IllegalArgumentException 由 GlobalExceptionHandler 翻译成 400。"
+                    + "对应第 37 章「OCR 票据识别」案例。")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "识别完成（含 OCR 引擎失败但已落 FAILED 记录的情形）",
+                    content = @Content(schema = @Schema(implementation = Receipt.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "上传参数无效：缺 file 字段 / file 为空"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "服务端错误：临时文件读写异常 / 多部件解析失败")
+    })
     public ApiResponse<Receipt> uploadReceipt(@PathVariable Long id,
                                               @RequestParam(UPLOAD_PARAM) MultipartFile file)
             throws IOException {

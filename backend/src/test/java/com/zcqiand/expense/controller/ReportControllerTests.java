@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.zcqiand.expense.entity.ExpenseReport;
 import com.zcqiand.expense.entity.ExpenseStatus;
 import com.zcqiand.expense.repository.ExpenseReportRepository;
+import com.zcqiand.expense.repository.TestExpenseReportTimeRepository;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
@@ -53,6 +54,14 @@ class ReportControllerTests {
     @Autowired
     private ExpenseReportRepository repository;
 
+    /**
+     * 测试专用 Repository——只在这里覆写 created_at（生产 Repository 不再暴露
+     * 写 updatable=false 字段的方法）。clearAutomatically=true 保证后续
+     * findByCreatedAtBetween 读到新值。
+     */
+    @Autowired
+    private TestExpenseReportTimeRepository timeRepo;
+
     private static OffsetDateTime atMonth(YearMonth ym, int day) {
         return OffsetDateTime.of(ym.atDay(day).atTime(10, 0), ZoneOffset.UTC);
     }
@@ -65,7 +74,7 @@ class ReportControllerTests {
         r.setReason("测试报销单");
         r.setStatus(status);
         ExpenseReport saved = repository.save(r);
-        repository.setCreatedAt(saved.getId(), createdAt);
+        timeRepo.setCreatedAt(saved.getId(), createdAt);
     }
 
     @BeforeEach

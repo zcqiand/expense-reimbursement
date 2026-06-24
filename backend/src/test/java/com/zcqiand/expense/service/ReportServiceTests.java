@@ -9,6 +9,7 @@ import com.zcqiand.expense.dto.StatusBreakdown;
 import com.zcqiand.expense.entity.ExpenseReport;
 import com.zcqiand.expense.entity.ExpenseStatus;
 import com.zcqiand.expense.repository.ExpenseReportRepository;
+import com.zcqiand.expense.repository.TestExpenseReportTimeRepository;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.YearMonth;
@@ -54,6 +55,15 @@ class ReportServiceTests {
     @Autowired
     private ExpenseReportRepository expenseRepo;
 
+    /**
+     * 测试专用 Repository——只在这里覆写 created_at。
+     * 生产 {@link ExpenseReportRepository} 不再暴露 setCreatedAt（created_at 是
+     * {@code @PrePersist} 单一写入点维护的 updatable=false 字段）；按月聚合测试
+     * 必须覆写它时，走测试切片下的 TestExpenseReportTimeRepository，避免污染生产路径。
+     */
+    @Autowired
+    private TestExpenseReportTimeRepository timeRepo;
+
     /** 直接构造并保存报销单，再覆写 created_at 以测月份过滤。 */
     private ExpenseReport makeReport(Long applicantId, BigDecimal amount,
                                      ExpenseStatus status, OffsetDateTime createdAt) {
@@ -63,8 +73,10 @@ class ReportServiceTests {
         r.setReason("测试报销单");
         r.setStatus(status);
         ExpenseReport saved = expenseRepo.save(r);
-        // @PrePersist 已写 createdAt，用原生 SQL 覆写以测月份维度（H2 支持）
-        expenseRepo.setCreatedAt(saved.getId(), createdAt);
+        // @PrePersist 已写 createdAt，用原生 SQL 覆写以测月份维度（H2 支持）。
+        // 走测试专用 repo：clearAutomatically=true 让一级缓存失效，后续
+        // findByCreatedAtBetween 才能读到新值。
+        timeRepo.setCreatedAt(saved.getId(), createdAt);
         return saved;
     }
 

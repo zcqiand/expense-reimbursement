@@ -7,9 +7,7 @@ import com.zcqiand.expense.entity.ExpenseStatus;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 /**
  * 报销单 JPA Repository。
@@ -19,8 +17,12 @@ import org.springframework.data.repository.query.Param;
  *
  * 第 12 章放最小必需的 findByStatus；第 38 章报表聚合新增三组
  * 只读聚合查询（@Query 投影到 dto record），用 SQL 直接在库内聚合，
- * 比拉全量到内存更省 IO；另保留一个 setCreatedAt 修改器供审计/测试
- * 覆写 created_at（业务上 created_at 由 @PrePersist 维护，仅测试需要）。
+ * 比拉全量到内存更省 IO。
+ *
+ * 不变量：created_at 由 {@code @PrePersist} 单一写入点维护（实体上
+ * {@code updatable = false}），本生产 Repository 不再暴露任何覆写它的
+ * 写方法——按月聚合测试需要覆写 created_at 时改用测试切片下的
+ * {@code TestExpenseReportTimeRepository}。
  */
 public interface ExpenseReportRepository extends JpaRepository<ExpenseReport, Long> {
 
@@ -48,12 +50,4 @@ public interface ExpenseReportRepository extends JpaRepository<ExpenseReport, Lo
             + "e.applicantId, count(e), coalesce(sum(e.amount), 0)) "
             + "from ExpenseReport e group by e.applicantId order by sum(e.amount) desc, e.applicantId asc")
     List<ApplicantBreakdown> aggregateByApplicant();
-
-    /**
-     * 第 38 章测试辅助：覆写 created_at 以验证按月聚合。
-     * 业务上 created_at 由 @PrePersist 维护，仅测试 / 数据修复场景使用。
-     */
-    @Modifying
-    @Query("update ExpenseReport e set e.createdAt = :createdAt where e.id = :id")
-    void setCreatedAt(@Param("id") Long id, @Param("createdAt") OffsetDateTime createdAt);
 }
