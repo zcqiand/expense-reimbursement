@@ -1,6 +1,6 @@
 # 财务报销系统
 
-> 《Harness 工程：围绕 Claude Code 构建可靠系统》**卷三·卷四**的可部署配套案例——财务报销流程系统。
+> 《Harness 工程：围绕 Claude Code 构建可靠系统》**卷三 **的可部署配套案例——财务报销流程系统。
 
 本仓库是书中讲解项目规划、数据库与 API、前端开发、调试、CI/CD、精准控制大模型、OCR 识别、报表审计等概念的**全功能实物载体**。
 
@@ -34,26 +34,26 @@
 
 ### 书一《Harness 工程：围绕 Claude Code 构建可靠系统》（卷三）
 
-| 章节 | 对应代码 |
-|------|---------|
-| 第 11 章 项目规划与架构设计 | `CLAUDE.md` + `docker-compose.yml` |
-| 第 12 章 数据库与 API 开发 | `backend/src/main/java/com/zcqiand/expense/` + `db/migration/` |
-| 第 13 章 前端开发与 UI 实现 | `frontend/src/pages/` |
-| 第 14 章 调试技巧 | 后端日志策略 + 前端 DevTools 集成 |
-| 第 15 章 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml` |
-| 第 16 章 精准控制大模型 | `backend/.../service/ApprovalOpinionService.java`（JSON Schema + 验证-修复循环）|
+| 章节                        | 对应代码                                                                           |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| 第 11 章 项目规划与架构设计 | `CLAUDE.md` + `docker-compose.yml`                                             |
+| 第 12 章 数据库与 API 开发  | `backend/src/main/java/com/zcqiand/expense/` + `db/migration/`                 |
+| 第 13 章 前端开发与 UI 实现 | `frontend/src/pages/`                                                            |
+| 第 14 章 调试技巧           | 后端日志策略 + 前端 DevTools 集成                                                  |
+| 第 15 章 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml`                               |
+| 第 16 章 精准控制大模型     | `backend/.../service/ApprovalOpinionService.java`（JSON Schema + 验证-修复循环） |
 
 ### 书二《Claude Code 从入门到项目实践》（卷四）
 
-| 章节 | 对应代码 |
-|------|---------|
-| 第 34 章 项目立项与架构设计 | `CLAUDE.md` + `docker-compose.yml` |
-| 第 35 章 数据库与 API 开发 | `backend/src/main/java/com/zcqiand/expense/` + `db/migration/` |
-| 第 36 章 前端开发与 UI 实现 | `frontend/src/pages/` |
-| 第 37 章 调试技巧 | 后端日志策略 + 前端 DevTools 集成 |
-| 第 38 章 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml` |
-| 第 39 章 精准控制大模型 | `backend/.../service/ApprovalOpinionService.java`（JSON Schema + 验证-修复循环）|
-| 第 40 章 运维、监控与部署 | `docker-compose.prod.yml` + `nginx.conf` |
+| 章节                        | 对应代码                                                                           |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| 第 34 章 项目立项与架构设计 | `CLAUDE.md` + `docker-compose.yml`                                             |
+| 第 35 章 数据库与 API 开发  | `backend/src/main/java/com/zcqiand/expense/` + `db/migration/`                 |
+| 第 36 章 前端开发与 UI 实现 | `frontend/src/pages/`                                                            |
+| 第 37 章 调试技巧           | 后端日志策略 + 前端 DevTools 集成                                                  |
+| 第 38 章 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml`                               |
+| 第 39 章 精准控制大模型     | `backend/.../service/ApprovalOpinionService.java`（JSON Schema + 验证-修复循环） |
+| 第 40 章 运维、监控与部署   | `docker-compose.prod.yml` + `nginx.conf`                                       |
 
 ## 快速开始
 
@@ -100,11 +100,10 @@ docker compose down
   - 对应卷三：报销骨架（项目规划 / 数据库与 API / 前端 / 调试 / CI/CD）
   - 对应卷四：OCR 识别 / 报表聚合 / 审计日志
   - 代码片段索引：[claudecode-harness-book](https://github.com/zcqiand/claudecode-harness-book)
-
 - **《Claude Code 从入门到项目实践》**（卷三）— 南荣相如
 
   - 通用工程实践（Agent Loop / 上下文治理 / 多文件协作 / 错误恢复 / 持久化）
-  - 代码片段索引：[claude-code-book](https://github.com/zcqiand/claude-code-book)- 
+  - 代码片段索引：[claude-code-book](https://github.com/zcqiand/claude-code-book)-
   - 电子书籍网址：[亚马逊](https://www.amazon.com/dp/B0H3M3B8GG)
 
 **Issues**：[https://github.com/zcqiand/expense-reimbursement/issues](https://github.com/zcqiand/expense-reimbursement/issues)
