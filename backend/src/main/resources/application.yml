@@ -4,9 +4,9 @@ spring:
 
   datasource:
     # 由环境变量注入；docker-compose 里指向 db 服务，本地开发可写 localhost
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/expense}
-    username: ${SPRING_DATASOURCE_USERNAME:expense}
-    password: ${SPRING_DATASOURCE_PASSWORD:expense}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/expense}
+    username: ${DATABASE_USER:expense}
+    password: ${DATABASE_PASSWORD:expense}
     driver-class-name: org.postgresql.Driver
 
   jpa:

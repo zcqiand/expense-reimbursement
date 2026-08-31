@@ -24,7 +24,11 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-expense} -d ${POSTGRES_DB:-expense}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-expense} -d ${POSTGRES_DB:-expense}",
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -39,9 +43,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-expense}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-expense}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-expense}
+      DATABASE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-expense}
+      DATABASE_USER: ${POSTGRES_USER:-expense}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-expense}
     ports:
       - "8080:8080"
 
