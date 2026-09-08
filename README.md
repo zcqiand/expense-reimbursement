@@ -49,5 +49,5 @@ docker compose down
 
 ## 快速链接
 
-- [功能规格文档.md](功能规格文档.md) — 功能名称、描述与验收标准
 - [CLAUDE.md](CLAUDE.md) — 开发约定与编码规范
+- [功能规格.md](docs/功能规格.md) — 功能名称、描述与验收标准
