@@ -1,6 +1,6 @@
 # expense-reimbursement — 仓库工作约定（供 Claude Code）
 
-本仓为《Harness 工程：围绕 Claude Code 构建可靠系统》卷三/卷四「财务报销系统」的可运行配套工程，是书稿代码块的 **source of truth**。
+本仓为可运行配套工程，是书稿代码块的 **source of truth**。
 
 ## 项目定位
 
