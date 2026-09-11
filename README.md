@@ -38,6 +38,8 @@ docker compose down
 
 ## 配套书籍及章节映射
 
+### 书一《Harness 工程：围绕 Claude Code 构建可靠系统》
+
 | 章 | 主题 | 对应源文件 |
 | :--- | :--- | :--- |
 | 第 11 / 34 章 | 项目规划与架构设计 | `CLAUDE.md` + `docker-compose.yml` |
