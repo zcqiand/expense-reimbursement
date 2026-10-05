@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
@@ -19,8 +18,11 @@ import java.time.OffsetDateTime;
  * 设计取舍：
  * - expenseReportId 用 Long 而非 @ManyToOne 关联报销单——OCR 与报销单生命周期
  *   解耦，弱关联更便于票据在报销单状态流转之外独立落地
- * - ocrText 用 @Lob：Tesseract 输出的票据正文可能很长（多行 + 中文），CLOB
- *   比 VARCHAR 更安全
+ * - ocrText 不用 @Lob：Tesseract 输出的票据正文可能很长（多行 + 中文），
+ *   长度诉求由 PostgreSQL text 列本身满足（text 无长度上限）。@Lob 在
+ *   Hibernate 6 + PG 方言把 String 映射为 oid 大对象，与 Flyway 的 text
+ *   列冲突（ddl-auto=validate 报 wrong column type，首航 2026-10-06）；
+ *   无 @Lob 的 String 走 VARCHAR 语义与 text 列精确匹配
  * - ocrStatus 用 String 而非 enum：保持与表里 VARCHAR(20) CHECK 约束一致，
  *   枚举值变更不必动 schema；Service 层负责状态合法性
  * - createdAt 由 @PrePersist 维护（对齐 ExpenseReport 风格），无 updatedAt——
@@ -45,7 +47,6 @@ public class Receipt {
     @Column(name = "file_path", nullable = false, length = 1000)
     private String filePath;
 
-    @Lob
     @Column(name = "ocr_text")
     private String ocrText;
 

@@ -41,4 +41,4 @@ RUN printf 'server {\n\
 EXPOSE 80
 
 HEALTHCHECK --interval=15s --timeout=3s --retries=5 \
-    CMD wget -q -O - http://localhost/ | grep -q "root" || exit 1
+    CMD wget -q -O - http://127.0.0.1/ | grep -q "root" || exit 1
