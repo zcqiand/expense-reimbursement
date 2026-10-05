@@ -1,31 +1,534 @@
+/* 账簿票据风 —— 题材派生：财务报销的视觉世界就是账本、票据与印章。
+   纸白底 + 会计绿纹账簿表格 + 穿孔边票据卡 + 微旋转印章徽章（五状态五色）
+   + 等宽表格数字。系统字栈，无外部字体，prefers-reduced-motion 友好。 */
+
 :root {
-  font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  color: #222;
-  background: #f5f6f8;
+  --paper: #fbfaf6;
+  --paper-deep: #f3f1e9;
+  --ink: #2b2b26;
+  --ink-dim: #6e6b60;
+  --line: #d8d4c6;
+  --ledger-green: #3e6b4f;
+  --bar-green: #eef3ea;
+  --stamp-red: #b3402e;
+  --stamp-gold: #a8842c;
+  --stamp-orange: #c07a2d;
+  --stamp-grey: #8a867c;
+  color-scheme: light;
+  font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 2rem;
+  min-height: 100vh;
+  background: var(--paper);
 }
+
+h1,
+h2 {
+  font-family: Georgia, 'Times New Roman', 'Songti SC', SimSun, serif;
+  font-weight: 600;
+}
+
+/* ---- 头部与导航 ---- */
+
+.site-head {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 22px 16px 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 3px double var(--ledger-green);
+}
+
+.site-head h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+}
+
+.site-nav {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 14px 6px;
+  cursor: pointer;
+}
+
+.nav-btn:hover {
+  color: var(--ink);
+}
+
+.nav-btn.active {
+  color: var(--ledger-green);
+  border-color: var(--line);
+  background: var(--paper);
+  border-bottom: 3px solid var(--ledger-green);
+  margin-bottom: -3px;
+  font-weight: 600;
+}
+
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 22px 16px 48px;
+}
+
+.page-title {
+  font-size: 17px;
+  margin: 20px 0 10px;
+  padding-left: 10px;
+  border-left: 4px solid var(--ledger-green);
+}
+
+.panel-title {
+  font-size: 16px;
+  margin: 0 0 12px;
+  padding-left: 10px;
+  border-left: 4px solid var(--ledger-green);
+}
+
+.muted {
+  color: var(--ink-dim);
+}
+
+/* ---- 金额：等宽 + 表格数字，右对齐 ---- */
+
+.amount {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- 统计卡 ---- */
+
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--ledger-green);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-num {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.stat-num.amount {
+  font-size: 20px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/* ---- 筛选 ---- */
+
+.filter-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.filter-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.filter-btn:hover {
+  border-color: var(--ledger-green);
+  color: var(--ledger-green);
+}
+
+.filter-btn.active {
+  background: var(--ledger-green);
+  border-color: var(--ledger-green);
+  color: var(--paper);
+}
+
+/* ---- 账簿表格：绿纹纸条纹 + 细线分隔 ---- */
 
 table {
   border-collapse: collapse;
   width: 100%;
-  background: white;
 }
 
-th, td {
-  border: 1px solid #e0e0e0;
-  padding: 0.5rem 0.75rem;
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 10px;
   text-align: left;
+  font-size: 14px;
 }
 
 th {
-  background: #fafafa;
   font-weight: 600;
+  font-size: 12px;
+  color: var(--ledger-green);
+  border-bottom: 2px solid var(--ledger-green);
+  letter-spacing: 0.04em;
 }
 
-tr:nth-child(even) {
-  background: #fcfcfc;
+td.num,
+th.num {
+  text-align: right;
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 会计绿纹纸：偶数行淡绿横纹 */
+tbody tr:nth-child(4n + 3),
+tbody tr:nth-child(4n + 4) {
+  background: var(--bar-green);
+}
+
+.ledger tbody tr {
+  cursor: pointer;
+}
+
+.ledger tbody tr:hover td {
+  background: #e6ecdf;
+}
+
+.ledger tr.row-open td {
+  background: #e2e9d8;
+  border-bottom: none;
+}
+
+.ledger tr.detail-row td {
+  background: var(--paper-deep);
+  border-top: 1px dashed var(--ledger-green);
+  cursor: default;
+  padding: 14px;
+}
+
+.detail-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.detail-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.detail-panel .upload-row,
+.detail-panel .ghost-btn {
+  margin-top: 2px;
+}
+
+/* ---- 表单：账簿登记式 ---- */
+
+.ledger-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  align-items: end;
+  margin: 8px 0;
+}
+
+.ledger-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.ledger-form label.wide {
+  grid-column: 1 / -1;
+}
+
+input,
+select {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-bottom: 2px solid var(--ink-dim);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--ledger-green);
+  outline-offset: 1px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 主操作：红章按钮（财务落章的动作色） */
+.stamp-btn {
+  background: var(--paper);
+  border: 2px solid var(--stamp-red);
+  color: var(--stamp-red);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 7px 18px;
+  letter-spacing: 0.08em;
+}
+
+.stamp-btn:hover:not(:disabled) {
+  background: var(--stamp-red);
+  color: var(--paper);
+}
+
+.ghost-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+.ghost-btn:hover:not(:disabled) {
+  border-color: var(--ledger-green);
+  color: var(--ledger-green);
+}
+
+.form-error {
+  color: var(--stamp-red);
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.file-label {
+  font-size: 13px;
+  color: var(--ink-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-label input {
+  border: none;
+  border-bottom: 1px solid var(--line);
+  padding: 2px 0;
+}
+
+/* ---- 状态印章：双线框 + 微旋转 ---- */
+
+.stamp {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 1px 8px;
+  border: 1.5px solid currentColor;
+  box-shadow: inset 0 0 0 1.5px transparent, inset 0 0 0 2.5px var(--paper);
+  transform: rotate(-2deg);
+  white-space: nowrap;
+}
+
+.stamp-DRAFT {
+  color: var(--stamp-grey);
+}
+
+.stamp-SUBMITTED {
+  color: var(--stamp-orange);
+}
+
+.stamp-APPROVED {
+  color: var(--ledger-green);
+}
+
+.stamp-REJECTED {
+  color: var(--stamp-red);
+}
+
+.stamp-PAID {
+  color: var(--stamp-gold);
+}
+
+.stamp-PENDING {
+  color: var(--stamp-grey);
+}
+
+.stamp-SUCCESS {
+  color: var(--ledger-green);
+}
+
+.stamp-FAILED {
+  color: var(--stamp-red);
+}
+
+/* ---- 票据卡：穿孔边 + 等宽正文 ---- */
+
+.receipt-slip,
+.opinion-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 12px 16px;
+  max-width: 640px;
+  /* 顶边打孔：一排半圆缺口（radial-gradient 圆点挖空感） */
+  background-image: radial-gradient(circle at 8px 0, var(--paper-deep) 4px, transparent 4.5px);
+  background-repeat: repeat-x;
+  background-size: 24px 8px;
+}
+
+.receipt-slip {
+  margin-top: 4px;
+}
+
+.slip-head {
+  margin: 0 0 6px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.slip-line {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.ocr-text {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 6px 0 0;
+  color: var(--ink);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* ---- AI 意见卡：三段定义列表 ---- */
+
+.opinion-card {
+  margin: 4px 0 0;
+}
+
+.opinion-card > div {
+  display: flex;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+}
+
+.opinion-card > div:last-child {
+  border-bottom: none;
+}
+
+.opinion-card dt {
+  flex: 0 0 3em;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ledger-green);
+}
+
+.opinion-card dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ---- 审批卡与面板 ---- */
+
+.panel {
+  max-width: 720px;
+}
+
+.approval-card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--ledger-green);
+  background: var(--paper-deep);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.report-no {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-weight: 700;
+}
+
+.card-head .amount {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.card-head .muted {
+  font-size: 13px;
+}
+
+.pay-row {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+/* ---- 响应式 ---- */
+
+@media (max-width: 640px) {
+  .stat-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ledger-form {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-wrap {
+    display: block;
+    overflow-x: auto;
+  }
 }

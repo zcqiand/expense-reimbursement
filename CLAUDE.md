@@ -22,6 +22,7 @@ Spring Boot 3.3 / Java 21 / PostgreSQL 16 / Flyway / React 18 / Vite / TypeScrip
 ```bash
 docker compose up -d   # 拉起 postgres + backend + frontend
 docker compose down    # 关停
+cd frontend && npm run build   # 前端构建门（tsc -b strict + vite；npm 走 npmmirror）
 ```
 
 ## 编码约定

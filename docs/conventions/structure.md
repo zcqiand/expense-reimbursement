@@ -29,8 +29,21 @@ expense-reimbursement/
 │   ├── vite.config.ts
 │   └── src/
 │       ├── App.tsx
-│       ├── pages/
-│       └── api/
+│       ├── types.ts            ← ExpenseReport/ApiResponse/报表类型（Java DTO 对齐）
+│       ├── types/              ← 新增业务类型目录（仓约定：业务类型放 src/types/）
+│       │   ├── approval.ts     ← ApprovalRequest/Opinion + 审批枚举
+│       │   └── receipt.ts      ← Receipt + OcrStatus
+│       ├── api/
+│       │   ├── expense.ts      ← CRUD + submit/approve/pay
+│       │   ├── report.ts       ← 报表聚合
+│       │   ├── receipt.ts      ← multipart 上传（不走统一 request）
+│       │   └── opinion.ts      ← 基路径 /api/expenses/{id}/opinion
+│       ├── features/
+│       │   ├── submit/SubmitForm.tsx
+│       │   └── approval/Approval.tsx
+│       └── pages/
+│           ├── Dashboard.tsx   ← 统计卡 + 筛选 + 行详情（submit/OCR/意见）
+│           └── Reports.tsx
 └── .github/workflows/
     └── ci.yml
 ```

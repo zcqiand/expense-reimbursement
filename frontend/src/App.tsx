@@ -1,38 +1,45 @@
 import { useState } from 'react'
 import { Dashboard } from './pages/Dashboard'
 import { Reports } from './pages/Reports'
+import { SubmitForm } from './features/submit/SubmitForm'
+import { Approval } from './features/approval/Approval'
 
-type Page = 'dashboard' | 'reports'
+type Page = 'dashboard' | 'submit' | 'approval' | 'reports'
 
-const navButtonStyle = (active: boolean): React.CSSProperties => ({
-  marginRight: '0.5rem',
-  fontWeight: active ? 700 : 400,
-  cursor: 'pointer',
-})
+const NAV: Array<{ key: Page; label: string }> = [
+  { key: 'dashboard', label: '工作台' },
+  { key: 'submit', label: '新建报销' },
+  { key: 'approval', label: '审批' },
+  { key: 'reports', label: '报表' },
+]
 
 export default function App() {
   const [page, setPage] = useState<Page>('dashboard')
 
   return (
     <>
-      <nav style={{ marginBottom: '1.5rem' }}>
-        <button
-          type="button"
-          style={navButtonStyle(page === 'dashboard')}
-          onClick={() => setPage('dashboard')}
-        >
-          工作台
-        </button>
-        <button
-          type="button"
-          style={navButtonStyle(page === 'reports')}
-          onClick={() => setPage('reports')}
-        >
-          报表
-        </button>
-      </nav>
+      <header className="site-head">
+        <h1>财务报销系统</h1>
+        <nav className="site-nav" aria-label="主导航">
+          {NAV.map((n) => (
+            <button
+              type="button"
+              key={n.key}
+              className={page === n.key ? 'nav-btn active' : 'nav-btn'}
+              onClick={() => setPage(n.key)}
+            >
+              {n.label}
+            </button>
+          ))}
+        </nav>
+      </header>
 
-      {page === 'dashboard' ? <Dashboard /> : <Reports />}
+      <main>
+        {page === 'dashboard' && <Dashboard />}
+        {page === 'submit' && <SubmitForm />}
+        {page === 'approval' && <Approval />}
+        {page === 'reports' && <Reports />}
+      </main>
     </>
   )
 }

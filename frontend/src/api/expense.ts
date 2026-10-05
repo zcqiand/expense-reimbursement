@@ -5,6 +5,7 @@
  * 第 13 章扩展时只改这一个文件即可加新端点。
  */
 import type { ApiResponse, ExpenseReport } from '../types'
+import type { ApprovalRequest } from '../types/approval'
 
 const BASE = '/api/v1/expense-reports'
 
@@ -38,5 +39,18 @@ export const expenseApi = {
 
   submit(id: number): Promise<ExpenseReport> {
     return request<ExpenseReport>(`${BASE}/${id}/submit`, { method: 'POST' })
+  },
+
+  /** 审批：SUBMITTED → APPROVED / REJECTED（对应后端 ExpenseService.approve） */
+  approve(id: number, payload: ApprovalRequest): Promise<ExpenseReport> {
+    return request<ExpenseReport>(`${BASE}/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+
+  /** 财务付款：APPROVED → PAID（无请求体） */
+  pay(id: number): Promise<ExpenseReport> {
+    return request<ExpenseReport>(`${BASE}/${id}/pay`, { method: 'POST' })
   },
 }

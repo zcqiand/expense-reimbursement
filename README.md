@@ -18,10 +18,14 @@ docker compose down
 ## 功能特性
 
 - 报销单提交与审批（金额 < 1000 直属经理审，≥ 1000 部门经理 + 财务总监两级审）
+- 前端工作台四页：工作台（统计卡/状态筛选/行详情）+ 新建报销 + 审批（两级/驳回/付款/AI 意见）+ 报表
 - OCR 票据识别（多语言 Tesseract OCR + Mock 降级，零 Key 即可跑）
 - 结构化审批意见生成（JSON Schema + 验证-修复循环）
 - 报表聚合与导出（按部门/状态/时间维度汇总）
 - 审计日志与权限矩阵
+
+> JWT 认证在功能规格中提及但后端未实现（无 Security 依赖）；前端不做假登录，
+> 如实留空。前后端契约以 Java DTO 逐字段对齐（frontend/src/types/ + api/）。
 
 ## 技术栈
 
@@ -46,7 +50,7 @@ docker compose down
 | :--- | :--- | :--- |
 | 11 | 项目规划与架构设计 | `CLAUDE.md` + `docker-compose.yml` |
 | 12 | 数据库与 API 开发 | `backend/src/main/java/com/zcqiand/expense/` + `backend/src/main/resources/db/migration/` |
-| 13 | 前端开发与 UI 实现 | `frontend/src/pages/` |
+| 13 | 前端开发与 UI 实现 | `frontend/src/pages/` + `frontend/src/features/` |
 | 14 | AI 调试方法 | 后端日志策略 + 前端 DevTools 集成 |
 | 15 | 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml` |
 | 16 | 一次到位（结构化输出与验证-修复循环） | `backend/src/main/java/com/zcqiand/expense/service/ApprovalOpinionService.java` |
