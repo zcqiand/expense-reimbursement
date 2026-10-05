@@ -38,16 +38,18 @@ docker compose down
 
 ## 配套书籍及章节映射
 
-### 书一《Harness 工程：围绕 Claude Code 构建可靠系统》
+### 书一《Harness 工程：围绕 Claude Code 构建可靠系统》（卷三）
+
+配套版本：`v2.0.1-20260909`（本书第 11—16 章引用源文件以此 tag 为准；其后提交仅为文档修订，代码未变）
 
 | 章 | 主题 | 对应源文件 |
 | :--- | :--- | :--- |
-| 第 11 / 34 章 | 项目规划与架构设计 | `CLAUDE.md` + `docker-compose.yml` |
-| 第 12 / 35 章 | 数据库与 API 开发 | `backend/src/main/java/com/zcqiand/expense/` + `db/migration/` |
-| 第 13 / 36 章 | 前端开发与 UI 实现 | `frontend/src/pages/` |
-| 第 14 / 37 章 | 调试技巧 | 后端日志策略 + 前端 DevTools 集成 |
-| 第 15 / 38 章 | 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml` |
-| 第 16 / 39 章 | 精准控制大模型 | `backend/service/ApprovalOpinionService.java` |
+| 11 | 项目规划与架构设计 | `CLAUDE.md` + `docker-compose.yml` |
+| 12 | 数据库与 API 开发 | `backend/src/main/java/com/zcqiand/expense/` + `backend/src/main/resources/db/migration/` |
+| 13 | 前端开发与 UI 实现 | `frontend/src/pages/` |
+| 14 | AI 调试方法 | 后端日志策略 + 前端 DevTools 集成 |
+| 15 | 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml` |
+| 16 | 一次到位（结构化输出与验证-修复循环） | `backend/src/main/java/com/zcqiand/expense/service/ApprovalOpinionService.java` |
 
 ## 快速链接
 
