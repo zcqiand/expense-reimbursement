@@ -28,8 +28,9 @@ FROM eclipse-temurin:21-jre-alpine
 
 # OCR：app.ocr.engine=tesseract 时 TesseractOcrClient 调容器内 tesseract CLI
 # （chi_sim+eng 双语；识别失败降级 FAILED 记录，不阻断报销流转）。
-# alpine 的 tesseract 语言数据是独立包，eng/chi_sim 都要显式装。
-RUN apk add --no-cache tesseract-ocr tesseract-ocr-eng tesseract-ocr-chi-sim
+# alpine 语言包命名 tesseract-ocr-data-<lang>：chi_sim 是下划线（Debian/Ubuntu
+# 才是 tesseract-ocr-chi-sim 连字符——2026-10-06 run 37384554900 首航指纹）。
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-eng tesseract-ocr-data-chi_sim
 
 # 创建非 root 用户跑应用——安全基线
 RUN addgroup -S app && adduser -S -G app app
