@@ -3,10 +3,11 @@ name: CI
 # 第 15 章「自动化测试与 CI/CD」的实物：每个 PR / push 跑后端 Maven verify
 # 与前端 Vite build，把「合入即通过」变成机器强制约束而非口头约定。
 #
-# 两个 job 并行：
-# - backend：JDK 21 + Maven，缓存 ~/.m2 加速二次构建，跑 `mvn verify`（含测试）
-# - frontend：Node 20 + npm，缓存 node_modules，跑 `npm ci` + `npm run build`
-#   （package.json 的 build 是 `tsc -b && vite build`，含类型检查）
+# 三个 job：
+# - backend / frontend（教学实物，原样）：JDK 21 + Maven verify；Node 20 + npm ci + build
+# - deploy（agent 家族部署链，docs/families/agent.md 2026-10-06 起 5306/5406，仅 tag 触发）：
+#   双镜像（-api / -web）build & push → VPS deploy/expense-reimbursement.sh
+#   三容器（pg + api + web）+ 渲染 vhost（expense.xiangru.uk）+ /actuator/health 探活
 #
 # 前端没有 test 脚本（package.json 只有 dev/build/preview/typecheck），
 # 所以 CI 只跑 build——类型错误会让 tsc 失败、从而让整个 build 失败。
@@ -14,6 +15,7 @@ name: CI
 on:
   push:
     branches: [main, master]
+    tags: ["v*"]
   pull_request:
     branches: [main, master]
 
@@ -64,8 +66,77 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies (npm ci)
-        run: npm ci
+      - name: Install dependencies (npm ci，npm 走 npmmirror)
+        run: npm ci --registry=https://registry.npmmirror.com --no-audit --no-fund
 
       - name: Build (tsc -b && vite build)
         run: npm run build
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: startsWith(github.ref, 'refs/tags/')
+    concurrency:
+      group: deploy-${{ github.event.repository.name }}-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-api:${{ github.ref_name }}
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-web:latest
+            ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}-web:${{ github.ref_name }}
+
+      - name: Pull images and restart containers on VPS
+        uses: appleboy/ssh-action@v1
+        # appleboy/ssh-action@v1 的 ${{ secrets.* }} 不会自动进 SSH 远端 shell;
+        # step env 注入 Actions env, with.envs 列出要转发的名字（逗号分隔）。
+        # LLM_API_KEY 双用途：api 容器 LLM 审批意见（live）+ ANTHROPIC_API_KEY
+        # 启动硬依赖（AnthropicOpinionClient fromEnv()，缺 key 应用起不来）。
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          NGINX_DOMAIN: ${{ vars.NGINX_DOMAIN }}
+          NGINX_CERT_BASENAME: ${{ vars.NGINX_CERT_BASENAME }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: LLM_API_KEY,NGINX_DOMAIN,NGINX_CERT_BASENAME
+          script: |
+            # 自举: 首次部署无 /home/deploy/<repo>/ 时自动建 + 拉 deploy 脚本
+            set -e
+            REPO="${{ github.event.repository.name }}"
+            DEPLOY_DIR="/home/deploy/$REPO"
+            mkdir -p "$DEPLOY_DIR"
+            cd "$DEPLOY_DIR"
+            # 总是重拉最新 deploy 脚本（脚本 bug fix 立即生效）；nginx 模板由脚本自拉
+            curl -fsSL "https://raw.githubusercontent.com/zcqiand/${REPO}/refs/heads/main/deploy/${REPO}.sh" -o "$REPO.sh"
+            chmod +x "$REPO.sh"
+            echo "→ env on remote: LLM_API_KEY_set=$([ -n \"${LLM_API_KEY:-}\" ] && echo yes || echo no)"
+            if [ ! -f "$REPO.env" ] && [ -z "${LLM_API_KEY:-}" ]; then
+              echo "ERROR: $REPO.env missing AND LLM_API_KEY secret not forwarded, deploy script will fail-fast" >&2
+            fi
+            sh "$REPO.sh" "${{ secrets.DOCKER_USERNAME }}" "${{ secrets.DOCKER_PASSWORD }}" "${{ github.ref_name }}"

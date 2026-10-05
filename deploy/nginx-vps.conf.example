@@ -1,0 +1,55 @@
+# expense-reimbursement — VPS nginx vhost 模板（agent 家族一域双 upstream 形态）
+# 部署时由 deploy/expense-reimbursement.sh 渲染到 /etc/nginx/sites-available/<domain>：
+#   <domain>                          → expense.xiangru.uk（可用 NGINX_DOMAIN 覆盖）
+#   /etc/nginx/ssl/<domain>.crt|.key  → /etc/nginx/ssl/xiangru-uk.{cert,key}（泛域证书）
+# 本容器不终结 TLS——那是 VPS nginx 的职责；api 容器只监听 127.0.0.1:5406。
+#
+# 渲染纪律（2026-09-03 事故）：cert 归一化 sed 规则必须排在 <domain> 之前。
+# 本仓有票据上传（multipart），client_max_body_size 必须放开（nginx 默认 1m 会 413）。
+
+# ---- HTTP → HTTPS ----
+server {
+    listen 80;
+    server_name <domain>;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name <domain>;
+
+    ssl_certificate     /etc/nginx/ssl/<domain>.crt;
+    ssl_certificate_key /etc/nginx/ssl/<domain>.key;
+
+    # HSTS（家族统一姿态）
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # 票据图片上传（multipart POST /api/expenses/{id}/receipts）
+    client_max_body_size 10m;
+
+    # ---- /api/ → api 容器（Spring Boot，host 127.0.0.1:5406）----
+    # LLM 审批意见端点可能慢（上游 LLM 出字），保留长读超时
+    location /api/ {
+        proxy_pass http://127.0.0.1:5406;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    # ---- / → web 静态容器（nginx，host 127.0.0.1:5306）----
+    location / {
+        proxy_pass http://127.0.0.1:5306;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
