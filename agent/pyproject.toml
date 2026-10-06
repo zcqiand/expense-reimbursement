@@ -24,4 +24,8 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # langgraph 0.5.x 导入期噪音（试点仓同款，文案锚死；禁全局放宽）
+    "ignore:The default value of `allowed_objects` will change:langchain_core._api.deprecation.LangChainPendingDeprecationWarning",
+]
