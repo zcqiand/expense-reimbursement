@@ -2,11 +2,14 @@ package com.zcqiand.expense.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zcqiand.expense.client.OpinionAgentClient;
+import com.zcqiand.expense.client.OpinionContext;
 import com.zcqiand.expense.dto.ApprovalOpinion;
 import com.zcqiand.expense.entity.ApprovalDecision;
 import com.zcqiand.expense.entity.ApprovalLevel;
@@ -19,8 +22,11 @@ import com.zcqiand.expense.repository.ApprovalRecordRepository;
 import com.zcqiand.expense.repository.ExpenseReportRepository;
 import java.math.BigDecimal;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.NoSuchElementException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,20 +38,19 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * ApprovalOpinionService 测试——第 16 章「精准控制大模型」三机制的回归网。
+ * ApprovalOpinionService 测试——v2 thin-client 语义。
  *
- * 测试策略照搬 ExpenseServiceTests 范式（@SpringBootTest + @Transactional
- * + H2 内嵌 + @TestPropertySource），但用一个 @TestConfiguration 提供打桩
- * 的 OpinionModelClient（@Primary 覆盖真实的 AnthropicOpinionClient）——
- * 这样：
- * - 不发真实网络请求、不需要 ANTHROPIC_API_KEY
- * - stub 可编程返回任意文本，精确驱动验证-修复循环的每条分支
+ * v1 的验证-修复循环行为锚（缺字段重试 / Markdown 围栏 / 超限抛异常等）已随
+ * 内核整体搬入 Python sidecar，由 agent/tests/test_graph.py 的等价锚表逐条
+ * 钉住（spec §5 等价门）。本类只测 Spring 侧剩下的编排语义：
  *
- * 覆盖三条核心路径：
- * - happy path：首轮即返回合法 JSON → 解析成功 + 持久化
- * - 验证-修复：首轮非法（缺字段）→ repair → 次轮合法 → 成功
- * - 超过重试上限仍非法 → 抛 OpinionGenerationException
- * 外加：报销单不存在 → 404；无审批记录 → 409。
+ * - happy path：stub 返回合法意见 → 上下文组装正确（spec §11 契约锚）+ 落库
+ * - 前置校验：报销单不存在 404 / 无审批记录 409，且都不触达 sidecar
+ * - sidecar 422 → modelOutputInvalid，opinion 不落库
+ * - sidecar 不可达 → agentUnavailable（RF3：@Transactional 内不写半截数据）
+ *
+ * stub 手法沿 v1：@TestConfiguration + @Primary 覆盖真实 AgentSidecarClient，
+ * 队列式出队——ApprovalOpinion 即返回、RuntimeException 即抛、空队列自曝漏桩。
  */
 @SpringBootTest
 @Transactional
@@ -57,8 +62,8 @@ import org.springframework.transaction.annotation.Transactional;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.flyway.enabled=false",
-        // 测试不打真实 Anthropic：关闭 AnthropicOpinionClient bean，注入 stub
-        "app.opinion.anthropic.enabled=false"
+        // 测试不打真实 sidecar：base-url 指向本地不监听端口（stub @Primary 接管）
+        "app.agent.base-url=http://127.0.0.1:8806"
 })
 class ApprovalOpinionServiceTests {
 
@@ -74,24 +79,41 @@ class ApprovalOpinionServiceTests {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** 可编程 stub：把预设回复排队，每次 chat() 弹一个。 */
     @Autowired
-    private StubOpinionModelClient stubClient;
+    private StubOpinionAgentClient stub;
 
-    // ============= happy path =============
+    @BeforeEach
+    void resetStub() {
+        // stub 是缓存上下文里的单例：@Transactional 只回滚 DB，不重置内存态——
+        // 不清则 queue/calls 计数断言会踩前序测试的残留
+        stub.queue.clear();
+        stub.calls.clear();
+    }
+
+    // ============= happy path + 契约锚 =============
 
     @Test
-    @DisplayName("happy path: 首轮合法 JSON → 解析成功 + 持久化到 ApprovalRecord.opinion")
-    void happyPathPersistsOpinion() throws Exception {
+    @DisplayName("happy path: stub 返回合法意见 → 上下文映射正确（spec §11）+ 持久化到 ApprovalRecord.opinion")
+    void happyPathPersistsOpinionAndMapsContext() throws Exception {
         ExpenseReport report = makeReport(new BigDecimal("500.00"));
         ApprovalRecord record = makeApproval(report);
-        stubClient.enqueue("""
-                {"summary":"建议批准","reasoning":"金额合规且事由清晰","suggestion":"可进入付款流程"}
-                """);
+        stub.queue.addLast(new ApprovalOpinion("建议批准", "金额合规且事由清晰", "可进入付款流程"));
 
         ApprovalOpinion opinion = service.generateAndSave(report.getId());
 
-        assertEquals("建议批准", opinion.summary());
+        // spec §11 契约锚：Java record ↔ sidecar pydantic 双侧 schema
+        assertEquals(1, stub.calls.size());
+        OpinionContext ctx = stub.calls.get(0);
+        assertEquals(report.getId(), ctx.expense().id());
+        assertEquals(1L, ctx.expense().applicantId());
+        assertEquals("500.00", ctx.expense().amount());        // BigDecimal → toPlainString
+        assertEquals("出差打车去客户现场", ctx.expense().reason());
+        assertEquals("SUBMITTED", ctx.expense().status());     // enum → name()
+        assertEquals(2L, ctx.latestApproval().approverId());
+        assertEquals("MANAGER", ctx.latestApproval().level());
+        assertEquals("APPROVED", ctx.latestApproval().decision());
+        assertEquals("金额合规", ctx.latestApproval().reason());
+
         assertTrue(opinion.isComplete());
 
         // 持久化校验：opinion 列被写入且可反序列化回 ApprovalOpinion
@@ -102,110 +124,63 @@ class ApprovalOpinionServiceTests {
         assertEquals("可进入付款流程", node.get("suggestion").asText());
     }
 
-    // ============= 验证-修复循环 =============
+    // ============= 前置条件异常（先于 sidecar 调用） =============
 
     @Test
-    @DisplayName("验证-修复: 首轮缺字段 → repair → 次轮合法 → 成功")
-    void repairAfterIncompleteFirstAttempt() {
-        ExpenseReport report = makeReport(new BigDecimal("3000.00"));
-        makeApproval(report);
-        // 首轮：suggestion 缺失（isComplete=false）；次轮：合法
-        stubClient.enqueue("""
-                {"summary":"建议补充材料","reasoning":"大额需核对发票"}
-                """);
-        stubClient.enqueue("""
-                {"summary":"建议补充材料","reasoning":"大额需核对发票原件","suggestion":"请补充发票扫描件"}
-                """);
-
-        ApprovalOpinion opinion = service.generateAndSave(report.getId());
-
-        assertTrue(opinion.isComplete());
-        assertEquals("请补充发票扫描件", opinion.suggestion());
-        // stub 应被消耗 2 次——首轮失败 + 次轮成功
-        assertEquals(0, stubClient.remaining());
-    }
-
-    @Test
-    @DisplayName("验证-修复: 首轮带 Markdown 围栏 → extractJson 抽取后解析成功")
-    void repairStripsMarkdownFence() {
-        ExpenseReport report = makeReport(new BigDecimal("800.00"));
-        makeApproval(report);
-        // 模型偶尔会用代码块包裹——extractJson 应能抽出 JSON
-        stubClient.enqueue("""
-                ```json
-                {"summary":"建议批准","reasoning":"小额打车合规","suggestion":"正常付款"}
-                ```
-                """);
-
-        ApprovalOpinion opinion = service.generateAndSave(report.getId());
-
-        assertTrue(opinion.isComplete());
-        assertEquals("建议批准", opinion.summary());
-    }
-
-    // ============= 超过重试上限 =============
-
-    @Test
-    @DisplayName("超过重试上限仍非法 → 抛 OpinionGenerationException")
-    void exhaustsRetriesThrows() {
-        ExpenseReport report = makeReport(new BigDecimal("500.00"));
-        makeApproval(report);
-        // 首轮 + 2 次 repair 全部非法（每次缺不同字段）
-        stubClient.enqueue("""
-                {"summary":"x","reasoning":"y"}
-                """);
-        stubClient.enqueue("""
-                {"summary":"x","suggestion":"z"}
-                """);
-        stubClient.enqueue("""
-                {"reasoning":"y","suggestion":"z"}
-                """);
-
-        OpinionGenerationException ex = assertThrows(OpinionGenerationException.class,
-                () -> service.generateAndSave(report.getId()));
-        assertEquals("OPINION_MODEL_OUTPUT_INVALID", ex.getCode());
-        // 三次尝试全部消耗
-        assertEquals(0, stubClient.remaining());
-    }
-
-    @Test
-    @DisplayName("验证-修复: 首轮完全非法 JSON → repair → 次轮合法 → 成功")
-    void repairAfterUnparseableFirstAttempt() {
-        ExpenseReport report = makeReport(new BigDecimal("500.00"));
-        makeApproval(report);
-        // 首轮：纯解释文字，根本不是 JSON；次轮：合法
-        stubClient.enqueue("我认为应该批准这笔报销，因为金额合规。");
-        stubClient.enqueue("""
-                {"summary":"建议批准","reasoning":"金额合规","suggestion":"正常付款"}
-                """);
-
-        ApprovalOpinion opinion = service.generateAndSave(report.getId());
-
-        assertTrue(opinion.isComplete());
-        assertEquals("建议批准", opinion.summary());
-    }
-
-    // ============= 前置条件异常 =============
-
-    @Test
-    @DisplayName("报销单不存在 → ExpenseNotFoundException")
+    @DisplayName("报销单不存在 → ExpenseNotFoundException，且不触达 sidecar")
     void missingExpenseThrowsNotFound() {
         assertThrows(ExpenseNotFoundException.class, () -> service.generateAndSave(999L));
+        assertEquals(0, stub.calls.size());
     }
 
     @Test
-    @DisplayName("报销单无审批记录 → OpinionGenerationException OPINION_NO_APPROVAL_RECORD")
+    @DisplayName("报销单无审批记录 → OPINION_NO_APPROVAL_RECORD，且不触达 sidecar")
     void noApprovalRecordThrows() {
         ExpenseReport report = makeReport(new BigDecimal("500.00"));
         // 不创建任何 ApprovalRecord
 
         OpinionGenerationException ex = assertThrows(OpinionGenerationException.class,
                 () -> service.generateAndSave(report.getId()));
+
         assertEquals("OPINION_NO_APPROVAL_RECORD", ex.getCode());
+        assertEquals(0, stub.calls.size());
+    }
+
+    // ============= sidecar 失败映射（422 / 不可达） =============
+
+    @Test
+    @DisplayName("sidecar 422 → OPINION_MODEL_OUTPUT_INVALID，opinion 不落库")
+    void agentInvalidOutputMapsTo409AndWritesNothing() {
+        ExpenseReport report = makeReport(new BigDecimal("500.00"));
+        ApprovalRecord record = makeApproval(report);
+        stub.queue.addLast(OpinionGenerationException.modelOutputInvalid(
+                "输出字段不完整（存在空字段）: {}"));
+
+        OpinionGenerationException ex = assertThrows(OpinionGenerationException.class,
+                () -> service.generateAndSave(report.getId()));
+
+        assertEquals("OPINION_MODEL_OUTPUT_INVALID", ex.getCode());
+        assertNull(approvalRepo.findById(record.getId()).orElseThrow().getOpinion());
+    }
+
+    @Test
+    @DisplayName("sidecar 不可达 → OPINION_AGENT_UNAVAILABLE（409 形状），opinion 不留半截（RF3）")
+    void agentUnavailableMapsTo409AndRollsBackWrite() {
+        ExpenseReport report = makeReport(new BigDecimal("500.00"));
+        ApprovalRecord record = makeApproval(report);
+        stub.queue.addLast(OpinionGenerationException.agentUnavailable("Connection refused"));
+
+        OpinionGenerationException ex = assertThrows(OpinionGenerationException.class,
+                () -> service.generateAndSave(report.getId()));
+
+        assertEquals("OPINION_AGENT_UNAVAILABLE", ex.getCode());
+        assertTrue(ex.getMessage().contains("审批 Agent 暂不可用"));
+        // 回滚锚：落库未发生——ApprovalRecord.opinion 不写半截数据
+        assertNull(approvalRepo.findById(record.getId()).orElseThrow().getOpinion());
     }
 
     // ------------------------------------------------------------------
-    // 测试夹具
+    // 测试夹具（照 v1）
     // ------------------------------------------------------------------
 
     private ExpenseReport makeReport(BigDecimal amount) {
@@ -228,7 +203,7 @@ class ApprovalOpinionServiceTests {
     }
 
     // ------------------------------------------------------------------
-    // 打桩：可编程 OpinionModelClient，覆盖真实的 AnthropicOpinionClient
+    // 打桩：可编程 OpinionAgentClient，覆盖真实 AgentSidecarClient
     // ------------------------------------------------------------------
 
     @TestConfiguration
@@ -236,33 +211,31 @@ class ApprovalOpinionServiceTests {
 
         @Bean
         @Primary
-        StubOpinionModelClient stubOpinionModelClient() {
-            return new StubOpinionModelClient();
+        StubOpinionAgentClient stubOpinionAgentClient() {
+            return new StubOpinionAgentClient();
         }
     }
 
     /**
-     * 队列式打桩：测试预先 enqueue 若干回复，每次 chat() 弹一个，按顺序模拟
-     * 「首轮 / repair1 / repair2」。remaining() 用于断言消耗次数。
+     * 队列式打桩：出队元素是 ApprovalOpinion 即返回，是 RuntimeException 即抛，
+     * 空队列抛 NoSuchElementException 自曝「测试漏了出队注入」。
+     * calls 记录每次收到的上下文——前置校验类测试用它断言「没触达 sidecar」。
      */
-    static class StubOpinionModelClient implements OpinionModelClient {
-        private final Deque<String> replies = new ArrayDeque<>();
-
-        void enqueue(String reply) {
-            replies.addLast(reply);
-        }
-
-        int remaining() {
-            return replies.size();
-        }
+    static class StubOpinionAgentClient implements OpinionAgentClient {
+        final Deque<Object> queue = new ArrayDeque<>();
+        final List<OpinionContext> calls = new ArrayList<>();
 
         @Override
-        public String chat(String systemPrompt, String userPrompt) {
-            if (replies.isEmpty()) {
-                throw new IllegalStateException(
-                        "StubOpinionModelClient 队列已空：测试 enqueue 的回复数少于实际调用次数");
+        public ApprovalOpinion generate(OpinionContext context) {
+            calls.add(context);
+            Object next = queue.poll();
+            if (next instanceof ApprovalOpinion opinion) {
+                return opinion;
             }
-            return replies.pollFirst();
+            if (next instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new NoSuchElementException("StubOpinionAgentClient 队列已空：测试漏了出队注入");
         }
     }
 }

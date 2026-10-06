@@ -36,7 +36,7 @@ public class ApprovalOpinionController {
     @PostMapping("/{id}/opinion")
     @Operation(
             summary = "为报销单生成结构化审批意见",
-            description = "调 claude-opus-4-7，用 JSON Schema 约束输出 + 验证-修复循环，"
+            description = "调 LLM（OpenAI 兼容，可配模型），用 JSON Schema 约束输出 + 验证-修复循环，"
                     + "生成 summary/reasoning/suggestion 三字段意见并写入最新审批记录。"
                     + "对应第 16 章「精准控制大模型」案例。")
     @ApiResponses(value = {
@@ -46,7 +46,7 @@ public class ApprovalOpinionController {
                     responseCode = "404", description = "报销单不存在"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "报销单无审批记录 / 模型输出经多轮修复仍不合规")
+                    description = "报销单无审批记录 / 模型输出经多轮修复仍不合规 / 审批 Agent 暂不可用")
     })
     public ApiResponse<ApprovalOpinion> generateOpinion(
             @Parameter(description = "报销单 ID", required = true)

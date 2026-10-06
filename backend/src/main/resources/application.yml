@@ -30,6 +30,11 @@ server:
   servlet:
     context-path: /
 
+app:
+  agent:
+    # Spring → Python sidecar（agent 容器）；无默认值——env 缺失启动即失败（禁兜底铁律）
+    base-url: ${AGENT_BASE_URL}
+
 management:
   endpoints:
     web:

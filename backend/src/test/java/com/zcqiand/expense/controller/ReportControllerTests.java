@@ -44,7 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.flyway.enabled=false",
-        "app.ocr.engine=mock"
+        "app.ocr.engine=mock",
+        "app.agent.base-url=http://127.0.0.1:8806"
 })
 class ReportControllerTests {
 
