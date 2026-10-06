@@ -125,15 +125,21 @@ if [ -f "$ENV_FILE" ]; then
     append_if_missing DATABASE_PASSWORD "$(grep '^POSTGRES_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)"
   fi
 
-  # 密钥类双模：缺/空/占位才覆盖（运维手工换的真 key 保留）
+  # 密钥类双模：缺/空/占位才写（运维手工换的真 key 保留）。
+  # 两动作分开——首航指纹（run 37496157629）：条件里「缺行」为真但 sed 只会
+  # 替换已存在的行，v1 env-file 无 LLM_API_KEY 行时 upsert 打印了却没写入，
+  # agent 容器 api_key=False fail-fast 探活红。缺行走 append，空/占位走 sed。
   upsert_if_placeholder() {
     key="$1"; val="$2"
-    if ! grep -q "^${key}=..*" "$ENV_FILE" \
-       || grep -q "^${key}=$" "$ENV_FILE" \
+    if grep -q "^${key}=$" "$ENV_FILE" \
        || grep -q "^${key}=CHANGE_ME$" "$ENV_FILE" \
        || grep -q "^${key}=sk-xxxxxxxx$" "$ENV_FILE"; then
-      echo "→ upsert ${key} to existing $ENV_FILE"
+      echo "→ upsert ${key} to existing $ENV_FILE (placeholder → replace)"
       sed -i "s#^${key}=.*#${key}=${val}#" "$ENV_FILE"
+    elif ! grep -q "^${key}=..*" "$ENV_FILE"; then
+      echo "→ upsert ${key} to existing $ENV_FILE (line missing → append)"
+      umask 077
+      printf '%s=%s\n' "$key" "$val" >> "$ENV_FILE"
     fi
   }
   if [ -n "${LLM_API_KEY:-}" ]; then
