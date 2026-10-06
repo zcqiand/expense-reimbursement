@@ -1,6 +1,7 @@
-# 财务报销系统三服务编排。
+# 财务报销系统四服务编排（v2：db + agent + backend + frontend）。
 #
-# 阶段 1 骨架版：暂只起 db + backend。前端在阶段 5 才会加入。
+# agent 是 Python sidecar（LangGraph 意见生成图，OpenAI 兼容 LLM），
+# backend 经 http://agent:8100 调它；LLM_MODE 必填 mock|live。
 #
 # 用法：
 #   docker compose up -d           # 后台启动
@@ -33,6 +34,33 @@ services:
       timeout: 3s
       retries: 10
 
+  agent:
+    build: ./agent
+    container_name: expense-agent
+    restart: unless-stopped
+    environment:
+      # LLM_MODE 必填（:?）——mock|live，禁 env 默认值兜底（suite 铁律）；
+      # live 缺 key 由 Python 侧 fail-fast 拦，mock 模式无 key 也得起容器
+      LLM_MODE: "${LLM_MODE:?LLM_MODE 必填 mock|live}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_MODEL: "${LLM_MODEL:-}"
+      AGENT_PORT: "8100"
+    ports:
+      # dev 便捷映射；prod（deploy 脚本）不暴 host 端口，不进 vhost
+      - "8806:8100"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/api/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   backend:
     build:
       context: ./backend
@@ -42,10 +70,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      agent:
+        condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-expense}
       DATABASE_USER: ${POSTGRES_USER:-expense}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-expense}
+      AGENT_BASE_URL: http://agent:8100
     ports:
       - "8080:8080"
 

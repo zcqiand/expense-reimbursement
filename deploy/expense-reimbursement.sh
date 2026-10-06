@@ -6,21 +6,21 @@
 #                    && sh expense-reimbursement.sh $DOCKER_USERNAME $DOCKER_PASSWORD $VERSION
 #
 # agent 家族部署形态（docs/families/agent.md，2026-10-06 分配 5306/5406），
-# 本仓与家族 uvicorn 形态的差异——Spring Boot + PG，三容器：
+# 本仓与家族 uvicorn 形态的差异——Spring Boot + PG + Python sidecar，四容器：
 #   db  容器（postgres:16-alpine，不暴 host 端口，docker network 内互联）
+#   agent 容器（Python sidecar，LangGraph 意见图，无 host 端口，network 内互联）
 #   api 容器（fat jar 监听容器 8080）→ host 127.0.0.1:5406（单层映射）
 #   web 容器（nginx 静态，容器内 :80）→ host 127.0.0.1:5306
 #   vhost expense.xiangru.uk：/ → web 容器，/api/ → api 容器
 #
 # 与家族后端仓 deploy 脚本的差异：
-#   - 三容器 + docker network + pgdata 卷（$BASE/data/pg）
+#   - 四容器 + docker network + pgdata 卷（$BASE/data/pg）
 #   - PG 密码首启自举随机生成落 env-file（umask 077，不入库不进镜像）
-#   - 探活 /actuator/health（200）+ web 静态首页（200）
-#   - ANTHROPIC_API_KEY 是启动硬依赖（AnthropicOpinionClient 构造器
-#     fromEnv() 缺 key 应用起不来），值取自 secret LLM_API_KEY（MiniMax key）。
-#     语义边界（如实标注）：anthropic-java SDK 无 base-url env、model 硬编码，
-#     该 key 打不到 MiniMax——prod 的 /opinion 端点会 401，
-#     核心流转（提交/审批/付款/OCR）不受影响。
+#   - 探活 /actuator/health（200）+ web 静态首页（200）；agent 容器内
+#     python urllib 探 /api/health（家族契约 {"ok":true,"mode":...}）
+#   - LLM_API_KEY 是 agent 容器 live 模式的 LLM key（唯一 secret）：
+#     LLM_MODE=live + LLM_BASE_URL=https://api.minimaxi.com/v1（OpenAI 兼容），
+#     mock 模式无 key 也起得来
 #   - OCR：APP_OCR_ENGINE=tesseract（镜像已装 tesseract-ocr + chi_sim）
 #
 # 前置: deploy 用户需在 docker 组中(sudo usermod -aG docker deploy)；
@@ -33,12 +33,14 @@ PASSWORD="${2:-}"
 VERSION="${3:-latest}"
 IMAGE_API="${USERNAME}/expense-reimbursement-api:${VERSION}"
 IMAGE_WEB="${USERNAME}/expense-reimbursement-web:${VERSION}"
+IMAGE_AGENT="${USERNAME}/expense-reimbursement-agent:${VERSION}"
 IMAGE_DB="postgres:16-alpine"
 BASE="/home/deploy/expense-reimbursement"
 API_PORT=5406
 WEB_PORT=5306
 CONTAINER_API="expense-reimbursement-api"
 CONTAINER_WEB="expense-reimbursement-web"
+CONTAINER_AGENT="expense-reimbursement-agent"
 CONTAINER_DB="expense-reimbursement-db"
 NETWORK="expense-reimbursement-net"
 
@@ -50,16 +52,15 @@ if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
   exit 2
 fi
 
-# ANTHROPIC_API_KEY 是 Spring 启动硬依赖（缺 key 应用起不来）——唯一 secret，
-# 值 = secret LLM_API_KEY（MiniMax key，见头注释语义边界）。fail-fast（禁兜底）。
+# LLM_API_KEY 是 agent 容器 live 模式的 LLM key——唯一 secret，fail-fast（禁兜底）。
 ENV_FILE="$BASE/expense-reimbursement.env"
 have_real_key() {
   [ -f "$ENV_FILE" ] \
-    && grep -q '^ANTHROPIC_API_KEY=sk-' "$ENV_FILE" \
-    && ! grep -q '^ANTHROPIC_API_KEY=sk-xxxxxxxx$' "$ENV_FILE"
+    && grep -q '^LLM_API_KEY=sk-' "$ENV_FILE" \
+    && ! grep -q '^LLM_API_KEY=sk-xxxxxxxx$' "$ENV_FILE"
 }
 if [ -z "${LLM_API_KEY:-}" ] && ! have_real_key; then
-  echo "ERROR: LLM_API_KEY secret required（映射 env-file ANTHROPIC_API_KEY，Spring 启动硬依赖；GitHub Secrets → ci.yml envs → 本脚本）" >&2
+  echo "ERROR: LLM_API_KEY secret required（映射 env-file LLM_API_KEY，agent 容器 live 模式 LLM key；GitHub Secrets → ci.yml envs → 本脚本）" >&2
   exit 1
 fi
 
@@ -81,7 +82,12 @@ if [ ! -f "$ENV_FILE" ]; then
     printf 'DATABASE_USER=expense\n'
     printf 'DATABASE_PASSWORD=%s\n' "$PG_PASSWORD"
     printf 'APP_OCR_ENGINE=tesseract\n'
-    printf 'ANTHROPIC_API_KEY=%s\n' "$LLM_API_KEY"
+    # 五行 LLM 契约（对齐三兄弟仓）：mode/base_url/model/key + agent 地址
+    printf 'LLM_MODE=live\n'
+    printf 'LLM_BASE_URL=https://api.minimaxi.com/v1\n'
+    printf 'LLM_MODEL=MiniMax-M3\n'
+    printf 'LLM_API_KEY=%s\n' "$LLM_API_KEY"
+    printf 'AGENT_BASE_URL=http://%s:8100\n' "$CONTAINER_AGENT"
   } > "$ENV_FILE"
   unset PG_PASSWORD
   chown deploy:deploy "$ENV_FILE" 2>/dev/null || true
@@ -103,6 +109,13 @@ if [ -f "$ENV_FILE" ]; then
   append_if_missing DATABASE_URL "jdbc:postgresql://${CONTAINER_DB}:5432/expense"
   append_if_missing DATABASE_USER 'expense'
   append_if_missing APP_OCR_ENGINE 'tesseract'
+  # v2 四键（非密钥）：mode/base_url/model + Spring→sidecar 地址
+  append_if_missing LLM_MODE 'live'
+  append_if_missing LLM_BASE_URL 'https://api.minimaxi.com/v1'
+  append_if_missing LLM_MODEL 'MiniMax-M3'
+  append_if_missing AGENT_BASE_URL "http://${CONTAINER_AGENT}:8100"
+  # 一次性清理 v1 契约键（幂等：无该行时 sed 无副作用）
+  sed -i '/^ANTHROPIC_API_KEY=/d' "$ENV_FILE"
   # 密钥类：DATABASE_PASSWORD 与 POSTGRES_PASSWORD 必须一致（api 连库凭据），
   # 缺一个时两边同刷为对方值
   if ! grep -q '^POSTGRES_PASSWORD=..*' "$ENV_FILE" && grep -q '^DATABASE_PASSWORD=..*' "$ENV_FILE"; then
@@ -124,7 +137,7 @@ if [ -f "$ENV_FILE" ]; then
     fi
   }
   if [ -n "${LLM_API_KEY:-}" ]; then
-    upsert_if_placeholder ANTHROPIC_API_KEY "$LLM_API_KEY"
+    upsert_if_placeholder LLM_API_KEY "$LLM_API_KEY"
   fi
 fi
 
@@ -179,21 +192,24 @@ else
   echo "✓ nginx reloaded"
 fi
 
-echo "→ image: $IMAGE_API / $IMAGE_WEB / $IMAGE_DB"
+echo "→ image: $IMAGE_API / $IMAGE_WEB / $IMAGE_AGENT / $IMAGE_DB"
 echo "→ docker login"
 printf '%s' "$PASSWORD" | docker login -u "$USERNAME" --password-stdin
 
-echo "→ docker pull (api + web + db)"
+echo "→ docker pull (api + web + agent + db)"
 docker pull "$IMAGE_API"
 docker pull "$IMAGE_WEB"
+docker pull "$IMAGE_AGENT"
 docker pull "$IMAGE_DB"
 
-# 停启顺序：api 先停（断开连接）→ web → db；起时反向 db → 等 ready → api → web
-echo "→ docker stop & rm $CONTAINER_API $CONTAINER_WEB $CONTAINER_DB"
+# 停启顺序：api/agent/web 先停 → db；起时反向 db → 等 ready → agent → 探活 → api → web
+echo "→ docker stop & rm $CONTAINER_API $CONTAINER_WEB $CONTAINER_AGENT $CONTAINER_DB"
 docker stop "$CONTAINER_API" 2>/dev/null || true
 docker rm "$CONTAINER_API" 2>/dev/null || true
 docker stop "$CONTAINER_WEB" 2>/dev/null || true
 docker rm "$CONTAINER_WEB" 2>/dev/null || true
+docker stop "$CONTAINER_AGENT" 2>/dev/null || true
+docker rm "$CONTAINER_AGENT" 2>/dev/null || true
 docker stop "$CONTAINER_DB" 2>/dev/null || true
 docker rm "$CONTAINER_DB" 2>/dev/null || true
 
@@ -228,6 +244,37 @@ if [ $i -ge 60 ]; then
   exit 1
 fi
 
+# agent 容器探活：容器内 python urllib 探 /api/health（家族契约），30×2s
+probe_agent() {
+  i=0
+  while [ $i -lt 30 ]; do
+    if docker exec "$CONTAINER_AGENT" python -c \
+      "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/api/health')" 2>/dev/null; then
+      echo "→ agent /api/health ok after $((i*2))s"
+      return 0
+    fi
+    if ! docker inspect --format='{{.State.Running}}' "$CONTAINER_AGENT" 2>/dev/null | grep -q true; then
+      echo "→ agent container not running, logs:"
+      docker logs --tail 30 "$CONTAINER_AGENT"
+      exit 1
+    fi
+    i=$((i+1))
+    sleep 2
+  done
+  echo "→ agent 探活失败（60s 上限）, logs:"
+  docker logs --tail 30 "$CONTAINER_AGENT"
+  exit 1
+}
+
+echo "→ docker run agent (无 host 端口，network 内互联，Spring 经容器名 :8100 调)"
+docker run -d \
+  --name "$CONTAINER_AGENT" \
+  --restart unless-stopped \
+  --network "$NETWORK" \
+  --env-file "$ENV_FILE" \
+  "$IMAGE_AGENT"
+probe_agent
+
 echo "→ docker run api (容器 8080 → host $API_PORT, network=$NETWORK)"
 docker run -d \
   --name "$CONTAINER_API" \
@@ -249,6 +296,7 @@ docker image prune -f
 
 echo "→ docker ps"
 docker ps --filter name="$CONTAINER_DB"
+docker ps --filter name="$CONTAINER_AGENT"
 docker ps --filter name="$CONTAINER_API"
 docker ps --filter name="$CONTAINER_WEB"
 
