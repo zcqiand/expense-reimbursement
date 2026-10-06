@@ -1,5 +1,5 @@
 {
-  "comment": "expense-reimbursement 版本钉——升级任何依赖先改这里再动代码（CLAUDE.md 铁律）。agent 段于 v2 实施后登记。",
+  "comment": "expense-reimbursement 版本钉——升级任何依赖先改这里再动代码（CLAUDE.md 铁律）。",
   "backend": {
     "java": "21",
     "spring_boot": "3.3.5",
@@ -14,5 +14,15 @@
     "vite": "5.4.11",
     "note": "精确版本以 frontend/package.json 为准"
   },
-  "ocr": { "tesseract": "5" }
+  "ocr": { "tesseract": "5" },
+  "agent": {
+    "python": "3.11",
+    "langgraph": "0.5.4",
+    "fastapi": "0.141.1",
+    "uvicorn": "0.54.0",
+    "openai": "2.54.0",
+    "pydantic": "2.12.5",
+    "note": "langgraph 钉 >=0.4,<0.6（书 ch11 口径，实测 0.5.4）；精确版本以 agent/pyproject.toml 为准；v2 实测登记（pip show，2026-10-06）"
+  }
 }
+

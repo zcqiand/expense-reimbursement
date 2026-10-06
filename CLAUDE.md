@@ -16,12 +16,23 @@
 ## 技术栈（版本钉死于 `version-lock.json`）
 
 Spring Boot 3.3 / Java 21 / PostgreSQL 16 / Flyway / React 18 / Vite / TypeScript / Docker Compose / springdoc-openapi
+agent/：Python 3.11 / FastAPI / langgraph `>=0.4,<0.6` 单框架（禁 langchain 顶层、CrewAI、checkpointer/interrupt——书 ch11 LangGraph 口径）
+
+## env 契约（v2）
+
+- `LLM_MODE`：必填 `mock|live`，无默认兜底（缺省启动即失败）
+- live 追加：`LLM_BASE_URL`（OpenAI 兼容端点）/ `LLM_API_KEY` / `LLM_MODEL`
+- `AGENT_PORT`：sidecar 监听端口（容器内 8100）
+- `AGENT_BASE_URL`：Spring → sidecar 地址（compose 用 `http://agent:8100`）
+- 全集见 `.env.example`
 
 ## 验收
 
 ```bash
-docker compose up -d   # 拉起 postgres + backend + frontend
+LLM_MODE=mock docker compose up -d   # 拉起 db + agent + backend + frontend
 docker compose down    # 关停
+cd agent && python -m pytest   # sidecar 测试门（无 Key 无网）
+cd backend && mvn test         # Spring 测试门
 cd frontend && npm run build   # 前端构建门（tsc -b strict + vite；npm 走 npmmirror）
 ```
 
