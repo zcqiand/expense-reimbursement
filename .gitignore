@@ -48,3 +48,9 @@ logs/
 
 # Docker volumes
 postgres-data/
+
+# Python agent (v2)
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/

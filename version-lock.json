@@ -1,0 +1,18 @@
+{
+  "comment": "expense-reimbursement 版本钉——升级任何依赖先改这里再动代码（CLAUDE.md 铁律）。agent 段于 v2 实施后登记。",
+  "backend": {
+    "java": "21",
+    "spring_boot": "3.3.5",
+    "springdoc_openapi": "2.6.0",
+    "postgresql": "16",
+    "flyway": "10",
+    "note": "精确版本以 backend/pom.xml 为准；anthropic-java 已于 v2 退役（Task 5）"
+  },
+  "frontend": {
+    "react": "18.3.1",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "note": "精确版本以 frontend/package.json 为准"
+  },
+  "ocr": { "tesseract": "5" }
+}
