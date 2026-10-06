@@ -119,11 +119,16 @@ def extract_json(raw: str) -> str:
 
 
 def _text_or_none(node: Any, field: str) -> str | None:
-    """v1 textOrNull 等价：缺失/null/空白串 → None；非对象节点全 None。"""
+    """v1 textOrNull 等价：缺失/null/空白串 → None；非对象节点全 None。
+
+    容器语义对齐 v1 Jackson asText()：对象/数组 → "" → 空白 → null
+    （进 repair，不放行 Python repr 垃圾——final review Important#1）；
+    非字符串标量按 JSON 文本形态渲染（true/880，非 True/880 的 Python 形态）。
+    """
     if not isinstance(node, dict):
         return None
     value = node.get(field)
-    if value is None:
+    if value is None or isinstance(value, (dict, list)):
         return None
-    text = str(value)  # 对齐 v1 asText()：非字符串标量转文本
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
     return text if text.strip() else None

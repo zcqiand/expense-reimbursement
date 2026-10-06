@@ -1,4 +1,5 @@
 """prompts 锚——SYSTEM_PROMPT/OPINION_SCHEMA 原文搬移 + build_user_prompt 对照 v1 措辞。"""
+import hashlib
 import json
 
 from expense_agent.prompts import OPINION_SCHEMA, SYSTEM_PROMPT, build_user_prompt
@@ -7,13 +8,22 @@ from expense_agent.prompts import OPINION_SCHEMA, SYSTEM_PROMPT, build_user_prom
 def test_system_prompt_embeds_schema_and_key_phrases():
     assert OPINION_SCHEMA in SYSTEM_PROMPT
     for phrase in ("严谨的企业财务审批助手", "只输出一个 JSON 对象",
-                   "错误信息会作为新输入回传"):
+                   "错误信息会作为新输入回传给你，请据此修正后"):
         assert phrase in SYSTEM_PROMPT
     schema = json.loads(OPINION_SCHEMA)
     assert schema["required"] == ["summary", "reasoning", "suggestion"]
     assert schema["additionalProperties"] is False
     for f in ("summary", "reasoning", "suggestion"):
         assert schema["properties"][f]["minLength"] == 1
+
+
+def test_constants_byte_identical_to_v1():
+    """全长逐字锚：v1 Java text block 常量经 javac 求值（V1Anchor，jshell 同法）
+    → SHA-256。短语锚对单字/空白级漂移不设防（实测漏「给」字即漏网），全长哈希根治。"""
+    assert hashlib.sha256(OPINION_SCHEMA.encode()).hexdigest() == (
+        "9d008ea02d300bf2de3291c88effe34bf3154852a27340af628358fe6cf258d7")
+    assert hashlib.sha256(SYSTEM_PROMPT.encode()).hexdigest() == (
+        "903b2f019db0e3ebc3baaaf3ad5a02a374cfa38b8d956ffcf4647b4e3f7c7aad")
 
 
 def test_first_prompt_matches_v1_wording():

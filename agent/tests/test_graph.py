@@ -121,3 +121,29 @@ def test_parse_opinion_non_object_json_counts_incomplete():
     opinion2, err2 = parse_opinion("[1,2]")
     assert opinion2 is None
     assert err2 is not None and err2.startswith("JSON 解析失败")
+
+
+def test_container_field_counts_incomplete_and_scalar_renders_json_text():
+    """v1 Jackson asText 容器/标量语义（final review Important#1 等价锚补钉）：
+
+    - 嵌套对象/数组：v1 asText() → "" → 空白 → null → 不完整 → repair。
+      v2 若 str(dict) 会把 Python repr（单引号 + True）当合法意见放行——
+      live 模式模型吐嵌套字段时垃圾直达意见卡且绕过自愈。
+    - 非字符串标量：v1 BooleanNode/IntNode asText → "true"/"880"（JSON 文本
+      形态），不是 Python 的 "True"。
+    """
+    opinion, err = parse_opinion(
+        '{"summary": {"nested": true}, "reasoning": "r", "suggestion": "s"}')
+    assert opinion is None
+    assert err is not None and err.startswith("输出字段不完整（存在空字段）")
+
+    opinion2, err2 = parse_opinion(
+        '{"summary": ["a"], "reasoning": "r", "suggestion": "s"}')
+    assert opinion2 is None
+    assert err2 is not None and err2.startswith("输出字段不完整（存在空字段）")
+
+    opinion3, err3 = parse_opinion(
+        '{"summary": true, "reasoning": 880, "suggestion": "s"}')
+    assert opinion3 is not None and err3 is None
+    assert opinion3["summary"] == "true"
+    assert opinion3["reasoning"] == "880"
