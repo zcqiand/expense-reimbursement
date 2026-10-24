@@ -64,16 +64,16 @@ docker compose down
 
 ### 书一《Harness 工程：围绕 Claude Code 构建可靠系统》（卷三）
 
-配套版本：`v2.0.1-20260909`（本书第 11—16 章引用源文件以此 tag 为准；其后提交仅为文档修订，代码未变）
+配套版本：`v2.0.1-20260909`（本书第 11—16 章引用源文件以此 tag 为准。勘误注记（2026-10-24 四查）：①书稿第 13 章引用的 `frontend/src/pages/SubmitForm.tsx`、`frontend/src/pages/Approval.tsx` 仓内任何 tag 均无此路径，实际文件为 `frontend/src/features/submit/SubmitForm.tsx`、`frontend/src/features/approval/Approval.tsx`（v2.1.0-20261006 起）；②其后的 v2.1—v2.2 演进（前端 features 化、agent sidecar 迁移）不在本书引用面内）
 
 | 章 | 主题 | 对应源文件 |
 | :--- | :--- | :--- |
 | 11 | 项目规划与架构设计 | `CLAUDE.md` + `docker-compose.yml` |
 | 12 | 数据库与 API 开发 | `backend/src/main/java/com/zcqiand/expense/` + `backend/src/main/resources/db/migration/` |
-| 13 | 前端开发与 UI 实现 | `frontend/src/pages/` + `frontend/src/features/` |
+| 13 | 前端开发与 UI 实现 | `frontend/src/pages/` + `frontend/src/styles.css`（书稿引用的 SubmitForm/Approval 实际在 `frontend/src/features/` 下，见勘误注记） |
 | 14 | AI 调试方法 | 后端日志策略 + 前端 DevTools 集成 |
 | 15 | 自动化测试与 CI/CD | `backend/src/test/` + `.github/workflows/ci.yml` |
-| 16 | 一次到位（结构化输出与验证-修复循环） | `agent/src/expense_agent/graph.py`（v2：内核已迁 Python sidecar；Spring 薄客户端 `backend/src/main/java/com/zcqiand/expense/client/`） |
+| 16 | 一次到位（结构化输出与验证-修复循环） | `backend/src/main/java/com/zcqiand/expense/service/ApprovalOpinionService.java` + `service/OpinionModelClient.java` + `entity/ExpenseReport.java` + `backend/src/test/`（审批意见服务族；v2.1—v2.2 的 agent sidecar 未被本书引用） |
 
 ## 快速链接
 
